@@ -1,0 +1,22 @@
+---
+title: "Homework 01"
+author: "Gustavo Baroni"
+date: "3/11/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+I am writing in order to do my first homework.  
+
+This activity involves install "LaTex", "rmarkdown" and add some codes.  
+
+I am not sure about the purpose of Latex or rmarkdown because I was able to create a new file on R Markdown before intalling it and I do not know how to use LaTex properly.  
+
+However, I believe that all of this is really important. Otherwise, Umberto would not ask us for it.  
+
+```{r echo = FALSE}
+a = seq(1:10)  
+b = a*a  
+plot(a, b)
+plot(a, b)
+```
