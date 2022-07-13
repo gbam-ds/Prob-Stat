@@ -1,0 +1,154 @@
+---
+title: "Homework 3 -- Intro to Probability and Statistics"
+author: "Gustavo Baroni"
+output: pdf_document
+---
+
+# Instructions:
+
+**Due:** 04/01 at 11:59PM.
+
+**What am I expecting?** An R Markdown with the answers.
+
+**Have fun!**
+
+# Changing Minds on Gay Marriage
+
+In this assignment, you will analyze the data from two experiments in which households were canvassed for support on gay marriage.
+
+This exercise is based on: LaCour, M. J., and D. P. Green. 2014. “[When Contact Changes Minds: An Experiment on Transmission of Support for Gay Equality.](http://dx.doi.org/10.1126/science.1256151)” *Science* 346(6215): 1366–69.
+
+**Context:** Canvassers were given a script leading to conversations that averaged about twenty minutes. A distinctive feature of this study is that gay and straight canvassers were randomly assigned to households and canvassers revealed whether they were straight or gay in the course of the conversation. The experiment aims to test the 'contact hypothesis,' which contends that out-group hostility (towards gays in this case) diminishes when people from different groups interact with one another.
+
+-------------------- ----------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `study`              Study (1 or 2) 
+ 
+ `treatment`          Treatment assignment: `No contact`, 
+                      `Same-Sex Marriage Script by Gay Canvasser`,
+                      `Same-Sex Marriage Script by Straight Canvasser`,
+                      `Recycling Script by Gay Canvasser`, and
+                      `Recycling Script by Straight Canvasser`
+ 
+ `wave`               Survey wave (1-7). Note that Study 2 lacks wave 5 and 6.
+ 
+ `ssm`                Support for gay marriage (1 to 5).  
+                      Higher scores indicate more support.
+ -------------------------------------------------------------------------------
+
+Each observation of this data set is a respondent giving a response to a five-point survey item on same-sex marriage.  There are two different studies in this data set, involving interviews during 7 different time periods (i.e. 7 waves). In both studies, the first wave consists of the interview before the canvassing treatment occurs. 
+
+Use the [gay.csv](https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/gay.csv) data set.
+
+## Question 1
+
+Explore the dataset. Make histograms of the quantitative variables and barplots of the qualitative variables. Discuss them.
+
+```{r}
+## Load tidyverse
+library(tidyverse)
+
+## Loading the dataset
+gay <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/gay.csv")
+
+## Subsetting only study 1
+gay <- filter(gay, study==1)
+
+## Erasing the variable `study`
+gay$study <- NULL
+
+## Dataset head
+head(gay, 10)
+```
+
+```{r}
+hist(gay$wave,
+     col = "grey",
+     main = "Interviews Research",
+     xlab = "Waves",
+     ylab = "Number of Interviews",
+     ylim = c(0.0, 10000))
+```
+
+```{r}
+barplot(table(gay$ssm),
+     col = "blue",
+     main = "Gay Marriage Support",
+     xlab = "Scale",
+     ylab = "Supporters",
+     ylim = c(0.0, 20000))
+```
+
+It is possible to say that the survey keeps the numbers of interviews constant. Moreover, more people are supporting gay marriage more obstinate (5 in a 1-5 scale) than not caring (3 in a 1-5 scale).  
+
+## Question 2
+
+Using the baseline interview wave before the treatment is administered (wave == 1), examine whether randomization was properly conducted. Base your analysis on the three groups:
+
+- 'Same-Sex Marriage Script by Gay Canvasser'
+- 'Same-Sex Marriage Script by Straight Canvasser'
+- 'No Contact.'
+  
+Briefly comment on the results. Would you say that the study was well designed?
+
+```{r}
+gay2 <- filter(gay, wave==1)
+tapply(gay2$ssm, gay2$treatment, mean)
+```
+As it is possible to see, there is not a huge variation among the groups because the treatment had not happened. That means randomization was properly conducted. A random survey is less likely to be biased, so it is a good goal to achieve in a resource.
+
+## Question 3
+
+The second wave of survey was implemented two months after the canvassing. Estimate the average treatment effects (differences in means) of gay and straight canvassers on support for same-sex marriage, separately (wave == 2). Give a brief interpretation of the results.
+
+```{r}
+gay3 <- filter(gay, wave == 2)
+tapply(gay3$ssm, gay3$treatment, mean)
+```
+There was a great improvement with the second wave. Both "Straight Canvasser" and "Gay Canvasser" became more favourable to gay marriage.
+
+
+## Question 4
+
+Check if the results persist in wave 7 of the study. Give a brief interpretation of the results.
+
+```{r}
+gay4 <- filter(gay, wave == 7)
+tapply(gay4$ssm, gay4$treatment, mean)
+```
+
+In wave 7, the "Straight Canvasser" decreased and "Gay Canvasser" increased a little. That means that the influence of a gay canvasser is bigger than a straight canvasser one when the matter is same-sex marriage.
+
+# Coronavirus
+
+Rami Krispin build a dataset with coronavirus cases updated daily. The package name is `coronavirus`.
+
+## Question 1
+
+Download the dataset and load it. Find the documentations for this package.
+
+```{r}
+install.packages("coronavirus", repos = "http://cran.us.r-project.org")
+library(coronavirus)
+data("coronavirus")
+?coronavirus
+```
+
+I have found the package documentation by using the "?" command. I could have used the "help" command too.
+
+## Question 2
+
+Can you find any stackoverflow resources about this package? If not, explain why? If yes, what types of resources?
+
+I can not find any StackOverflow resources about 'coronavirus', probably since it is recent. 
+
+## Question 3
+
+Make a table of number of cases by country. The table has to update itself automatically, so when I grade the problem set, the table will be the most updated one. Give a brief discussion on what did you do to solve this problem.
+
+```{r}
+table(coronavirus$Country.Region)
+```
+
+I have used the command "table" to make the table. In order to use this resource, you have to inform the data and the variable that you want and, as I installed the internet, every time I open the file and run it, there will be an update of the data.

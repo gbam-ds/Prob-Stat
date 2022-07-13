@@ -1,0 +1,241 @@
+---
+title: "Homework 4 -- Intro to Probability and Statistics"
+author: "Gustavo Baroni"
+output: pdf_document
+---
+
+# Instructions:
+
+**Due:** 05/07 at 11:59PM.
+
+**What am I expecting?** An R Markdown with the answers.
+
+**Have fun!**
+
+## Revisiting the Gay Marriage Experiment
+
+In this exercise, we revisit the gay marriage study we analyzed in the previous problem set. In May 2015, three scholars reported several irregularities in the data set used to produce the results in the study: [link here](https://stanford.edu/~dbroock/broockman_kalla_aronow_lg_irregularities.pdf). They found that the gay marriage experimental data were statistically indistinguishable from data in the Cooperative Campaign Analysis Project (CCAP), which interviewed voters throughout the 2012 US presidential campaign. The scholars suggested that the CCAP survey data—and not the original data alleged to have been collected in the experiment—were used to produce the results reported in the gay marriage study. The release of a report on these irregularities ultimately led to the retraction of the original article. In this exercise, we will use several measurement strategies to reproduce the irregularities observed in the gay marriage data set. To do so, we will use two CSV data files: a reshaped version of the original data set in which every observation corresponds to a unique respondent, `gayreshaped.csv`, and the 2012 CCAP data set alleged to have been used as the basis for the gay marriage study results, `ccap2012.csv`. Note that the feeling thermometer measures how warmly respondents feel towards gay couples on a 0–100 scale.
+
+I am going to install the packages from github:
+```{r}
+gay <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/gayreshaped.csv", header = TRUE)
+ccap <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/ccap2012.csv", header = TRUE)
+```
+
+**Gay Marriage Reshaped Data**
+
+-------------------- ----------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `study`              Which study the data set is from 
+                      (1 = study 1, 2 = study 2)
+                      
+ `treatment`          Five possible treatment assignment options
+                      
+ `therm1`             Survey thermometer rating of feeling towards 
+                      gay couples in wave 1 (0–100)
+ 
+ `therm2`             Survey thermometer rating of feeling towards 
+                      gay couples in wave 2 (0–100)
+                      
+ `therm3`             Survey thermometer rating of feeling towards 
+                      gay couples in wave 3 (0–100)
+                      
+ `therm4`             Survey thermometer rating of feeling towards 
+                      gay couples in wave 4 (0–100)
+ -------------------------------------------------------------------------------
+
+**CCAP Survey Data**
+
+-------------------- ----------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `caseid`             Unique respondent ID
+                      
+ `gaytherm`           Survey thermometer rating of feeling towards 
+                      gay couples (0–100)
+-------------------------------------------------------------------------------
+
+# Question 1
+
+##### In the gay marriage study, researchers used seven waves of a survey to assess how lasting the persuasion effects were over time. One irregularity the scholars found is that responses across survey waves in the control group (where no canvassing occurred) had unusually high correlation over time. What is the correlation between respondents' feeling thermometer ratings in waves 1 and 2 for the control group in study 1? To handle missing data, we should set the use argument of the `cor()` function to "complete.obs" so that the correlation is computed using only observations that have no missing data. Provide a brief substantive interpretation of the results.
+
+Selecting the first study and the control group:
+```{r}
+library(dplyr)
+gay1 <- filter(gay, study == 1)
+gay_control1 <- filter(gay1, treatment == "No Contact")
+```
+Now, I am going to calculate the correlation between respondents' feeling thermometer ratings in waves 1 and 2:
+```{r}
+cor(gay_control1$therm1, gay_control1$therm2, use = 'complete.obs')
+```
+So, as we can see, this is a huge correlation. It is practically impossible to have the same results in two different waves. Due to the close time between the first and the second wave, it would be
+rational if there were a strong correlation in the results, but not so high as 0.997.
+
+# Question 2
+
+##### Repeat the previous question using study 2 and comparing all waves within the control group. Note that the `cor()` function can take a single data frame with multiple variables. To handle missing data in this case, we can set the use argument to `"pairwise.complete.obs"`. This means that the `cor()` function uses all observations that have no missing values for a given pair of waves even if some of them have missing values in other waves. Briefly interpret the results.
+
+Recycling the previous code:
+```{r}
+gay2 <- filter(gay, study == 2)
+gay_control2 <- filter(gay2, treatment == "No Contact")
+```
+
+Now, I am going to calculate the correlations:
+1. Between the first and second waves:
+```{r}
+cor(gay_control2$therm1, gay_control2$therm2, use = "pairwise.complete.obs")
+```
+2. Between the first and third waves:
+```{r}
+cor(gay_control2$therm1, gay_control2$therm3, use = "pairwise.complete.obs")
+```
+3. Between the first and fourth waves:
+```{r}
+cor(gay_control2$therm1, gay_control2$therm4, use = "pairwise.complete.obs")
+```
+4. Between the second and third waves:
+```{r}
+cor(gay_control2$therm2, gay_control2$therm3, use = "pairwise.complete.obs")
+```
+5. Between the second and fourth waves:
+```{r}
+cor(gay_control2$therm2, gay_control2$therm4, use = "pairwise.complete.obs")
+```
+6. Between the third and fourth waves:
+```{r}
+cor(gay_control2$therm3, gay_control2$therm4, use = "pairwise.complete.obs")
+```
+
+So, as we can see, there is a significant correlation between the waves: the minimum value is 0.51.
+
+# Question 3
+
+##### Most surveys find at least some outliers or individuals whose responses are substantially different from the rest of the data. In addition, some respondents may change their responses erratically over time. Create a scatter plot to visualize the relationships between wave 1 and each of the subsequent waves in study 2. Use only the control group. Interpret the results.
+
+Creating the plots:
+
+1. Wave 1 and 2:
+```{r}
+plot(gay_control2$therm1, gay_control2$therm2, 
+     pch = 20,
+     main = "Relationship between wave 1 and 2",
+     sub = "The association between wave 1 and 2 is about 0.72",
+     xlab = "Wave 1",
+     ylab = "Wave 2")
+cor(gay_control2$therm1, gay_control2$therm2, use = "complete")
+```
+2. Wave 1 and 3:
+```{r}
+plot(gay_control2$therm1, gay_control2$therm3, 
+     pch = 20,
+     main = "Relationship between wave 1 and 3",
+     sub = "The association between wave 1 and 3 is about 0.71",
+     xlab = "Wave 1",
+     ylab = "Wave 3")
+cor(gay_control2$therm1, gay_control2$therm3, use = "complete")
+```
+3. Wave 1 and 4:
+```{r}
+plot(gay_control2$therm1, gay_control2$therm4, 
+     pch = 20,
+     main = "Relationship between wave 1 and 4",
+     sub = "The association between wave 1 and 4 is about 0.75",
+     xlab = "Wave 1",
+     ylab = "Wave 4")
+cor(gay_control2$therm1, gay_control2$therm4, use = "complete")
+```
+So, despite the passage of time, the correlation between the waves did not change as much as it should. It means that practically everyone did not change their minds all months along, which is almost impossible.  
+
+# Question 4
+
+##### The researchers found that the data of the gay marriage study appeared unusually similar to the 2012 CCAP data set even though they were supposed to be samples of completely different respondents. We use the data contained in `ccap2012.csv` and `gayreshaped.csv` to compare the two samples. Create a histogram of the 2012 CCAP feeling thermometer, the wave-1 feeling thermometer from study 1, and the wave-1 feeling thermometer from study 2. There are a large number of missing values in the CCAP data. Consider how the missing data might have been recoded in the gay marriage study. To facilitate the comparison across histograms, use the breaks argument in the histogram.
+
+The histogram of the 2012 CCAP feeling thermometer:
+```{r}
+hist(ccap$gaytherm,
+     main = "Histogram of the 2012 CCAP feeling thermometer",
+     xlab = "Thermometer rating of feeling towards gay couples",
+     ylab = "Supporters of gay marriage",
+     col = "springgreen4",
+     border = "turquoise4",
+     breaks = 5)
+```
+
+The histogram of the wave-1 feeling thermometer from study 1:
+```{r}
+hist(gay1$therm1,
+     main = "Histogram of wave-1 feeling thermometer",
+     xlab = "Thermometer rating of feeling towards gay couples",
+     ylab = "Supporters of gay marriage",
+     col = "springgreen3",
+     border = "turquoise4",
+     breaks = 5)
+```
+
+The histogram of the wave-1 feeling thermometer from study 2:
+```{r}
+hist(gay2$therm1,
+     main = "Histogram of wave-2 feeling thermometer",
+     xlab = "Thermometer rating of feeling towards gay couples",
+     ylab = "Supporters of gay marriage",
+     col = "springgreen2",
+     border = "turquoise4",
+     breaks = 5)
+```
+The histograms show us that the data set is quite the same.
+
+# Question 5
+
+##### A more direct way to compare the distributions of two samples is through a quantile–quantile plot. Use this visualization method to conduct the same comparison as in the previous question. Briefly interpret the plots.
+
+I [have studied] (https://stats.stackexchange.com/questions/12392/how-to-compare-two-datasets-with-q-q-plot-using-ggplot2) how to analyze two datasets using Q-Q plot and here are the results:
+
+1. CCAP feeling thermometer and the wave-1 feeling thermometer from study 1
+```{r}
+x <- ccap$gaytherm ;y <- gay1$therm1
+
+sx <- sort(x); sy <- sort(y)
+lenx <- length(sx)
+leny <- length(sy)
+if (leny < lenx)sx <- approx(1L:lenx, sx, n = leny)$y
+if (leny > lenx)sy <- approx(1L:leny, sy, n = lenx)$y
+
+require(ggplot2)
+g = ggplot() + geom_point(aes(x=sx, y=sy))
+g
+```
+
+2. CCAP feeling thermometer and the wave-1 feeling thermometer from study 2
+```{r}
+x <- ccap$gaytherm ;y <- gay2$therm1
+
+sx <- sort(x); sy <- sort(y)
+lenx <- length(sx)
+leny <- length(sy)
+if (leny < lenx)sx <- approx(1L:lenx, sx, n = leny)$y
+if (leny > lenx)sy <- approx(1L:leny, sy, n = lenx)$y
+
+require(ggplot2)
+g = ggplot() + geom_point(aes(x=sx, y=sy))
+g
+```
+
+3. The wave-1 feeling thermometer from study 1 and the wave-1 feeling thermometer from study 2
+```{r}
+x <- gay1$therm1 ;y <- gay2$therm1
+
+sx <- sort(x); sy <- sort(y)
+lenx <- length(sx)
+leny <- length(sy)
+if (leny < lenx)sx <- approx(1L:lenx, sx, n = leny)$y
+if (leny > lenx)sy <- approx(1L:leny, sy, n = lenx)$y
+
+require(ggplot2)
+g = ggplot() + geom_point(aes(x=sx, y=sy))
+g
+```
+
+As we can see, the association provides a nearly linear graphic. Strange...

@@ -1,0 +1,285 @@
+---
+title: "Homework 6 -- Intro to Probability and Statistics"
+author: "Gustavo Baroni"
+output: pdf_document
+---
+
+# Instructions:
+
+**Due:** 05/21 at 11:59PM.
+
+**What am I expecting?** An R Markdown with the answers.
+
+**Have fun!**
+
+The Brazilian Ministry of Health keep records of the daily number of Coronavirus cases, by dates and municipalities. The data set can be found here: (https://covid.saude.gov.br/). 
+
+# Question 1
+
+##### Take some time to familiarize yourself with the data. After that, please provide here a brief explanation of the variables and how the data set is organized.  
+In the website mentioned above, there is the following variables in a table:
+
+Variables               | Explanation
+------------------------|--------------------
+Brasil                  | The crountry that is analyzed
+Sul                     | The Brazilian South region. It groups Rio Grande do Sul (RS), Santa Catarina (SC), and Paraná (PR)
+Sudeste                 | The Brazilian Southeast region. It groups São Paulo (SP), Espírito Santo (ES), Rio de Janeiro (RJ), and Minas Gerais (MG)
+Centro-Oeste            | The Brazilian Midwest region. It groups Distrito Federal (DF), Goiás (GO), Mato Grosso (MT), and Mato Grosso do Sul (MS) 
+Nordeste                | The Brazilian Northeast region. It groups Alagoas (AL), Pernambuco (PE), Bahia (BA), Paraíba (PB), Sergipe (SE), Piauí (PI), Ceará (CE), Maranhão (MA), and Rio Grande do Norte (RN) 
+Norte                   | The Brazilian North region. It groups Amapá (AP), Rondônia (RO), Acre (AC), Pará (PA), Roraima (RR), Tocantins (TO), and Amazonas (AM)
+Casos                   | The number of COVID-19 confirmed cases
+Óbitos                  | The number of deaths by COVID-19
+Incidência/100mil hab.  | It is the incidence rate of COVID-19 for each 100                           | thousand inhabitants
+Mortalidade/100mil hab. | It is the death rate for each 100 thousand inhabitants
+Atualização             | The last time the data was updated 
+
+However, when I downloaded the CSV file, I saw many others variables:
+
+Variables               | Explanation
+------------------------|--------------------
+regiao                  | The Brazilians regions
+estado                  | The Brazilian states
+municipio               | The municipalities of Brazilian states
+coduf                   | Federation unit code
+codmun                  | Municipality code 
+codRegiaoSaude          | Health region code
+nomeRegiaoSaude         | Health region name
+data                    | Date
+semanaEpi               | Epidemiological notification per week
+populacaoTCU2019        | The population data collected by the TCU (works like the Government Accountability Office)
+casosAcumulado          | The amount of cases
+obitosAcumulado         | The amount of deaths
+Recuperadosnovos        | The number of recovered cases
+emAcompanhamentoNovos   | Cases in observation
+
+# Question 2
+
+##### I saved the May 15 version of the data set on the class GitHub, under the name `brazilcorona.csv`. Load the data set in your computer and put a `head` of the data set here.  
+Loading the data set from GitHub and putting a 'head':
+```{r}
+library(tidyverse)
+brazilcorona <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/brazilcorona.csv", header=T, fileEncoding = "UTF-8")
+head(brazilcorona)
+```
+
+# Question 3
+
+##### Note that the data set has the aggregated results by country, region, and state. Exclude all these aggregated results, keeping only the cases by the municipality. After that, exclude all cases before May 15. Put a `head` of the filtered data set here. What is the dimension of the filtered data set?  
+Keeping only the cases by the municipality after May 15, the head is:
+```{r}
+brazilcorona_municipality <- select(brazilcorona, -(regiao:estado)) %>%
+  filter(data >= "2020-05-15") %>%
+  subset(!(coduf == 76))
+head(brazilcorona_municipality)
+```
+The dimension of the filtered data set is equal to 3197. I know that because I have used the 'dim' function:
+```{r}
+dim(brazilcorona_municipality)
+```
+
+# Question 4
+
+##### Use the municipal population to compute the average infections rate (the number of infections divided by population times 100000) and mortality rate (the number of casualties divided by municipal population times 100000). For each state, which municipalities have the lowest and the highest infections and death rates? Create a new data set with the average infections and mortality rates by municipality.  
+Firstly, I am computing the average infections rate and mortality rate:
+```{r}
+brazilcorona15 <- filter(brazilcorona, data >= "2020-05-15")
+brazilcorona_rates <- brazilcorona15 %>%
+  mutate(av_inf = (casosAcumulado/populacaoTCU2019)*100000,
+         av_dth = (obitosAcumulado/populacaoTCU2019)*100000) %>%
+  group_by(regiao) %>%
+  summarize(rate_inf = mean(av_inf, na.rm = T),
+            rate_dth = mean(av_dth, na.rm = T))
+head(brazilcorona_rates)
+```
+Note that I have grouped the average in six categories: the first is the average rate for Brazil, and the others are for Brazilian regions.
+
+Secondly, I will provide the municipalities that have the lowest and the highest infections and death rates for each state. I have found in [StackOverflow]("https://stackoverflow.com/questions/61939336/how-to-group-twice/61940735#61940735") this code:
+```{r}
+brazilcorona_hl_rates <- select(brazilcorona, 
+                                (estado:emAcompanhamentoNovos)) %>%
+  filter(data >= "2020-05-15") %>%
+  subset(!(coduf == 76)) %>%
+  mutate(av_inf = (casosAcumulado/populacaoTCU2019)*100000,
+         av_dth = (obitosAcumulado/populacaoTCU2019)*100000)
+
+brazilcorona_hl_rates$av_dth = as.numeric(brazilcorona_hl_rates$av_dth)
+states = as.list(unique(brazilcorona_hl_rates$estado))
+
+brcorona_hi_rates_dth <- lapply(states, FUN=function(x){
+  df <- brazilcorona_hl_rates[brazilcorona_hl_rates$estado == x,]
+  df <- df[order(df$av_dth, decreasing = T),]
+  return(c(paste(x), as.character(df[1:2,"municipio"]),
+           as.character(df[(nrow(df)-1):nrow(df),"municipio"])))
+})
+head(brcorona_hi_rates_dth, 3)
+
+brcorona_low_rates_dth <- lapply(states, FUN=function(x){
+  df <- brazilcorona_hl_rates[brazilcorona_hl_rates$estado == x,]
+  df <- df[order(df$av_dth),]
+  return(c(paste(x), as.character(df[1:2,"municipio"]),
+           as.character(df[(nrow(df)):nrow(df),"municipio"])))
+})
+head(brcorona_low_rates_dth, 3)
+```
+As we can see, in "brcorona_hilow_rates_dth", there are the highest mortality rates due to COVID-19, while, in "brcorona_low_rates_dth", there are the lowest. 
+```{r}
+brazilcorona_hl_rates$av_inf = as.numeric(brazilcorona_hl_rates$av_inf)
+states = as.list(unique(brazilcorona_hl_rates$estado))
+
+brcorona_hi_rates_inf <- lapply(states, FUN=function(x){
+  df <- brazilcorona_hl_rates[brazilcorona_hl_rates$estado == x,]
+  df <- df[order(df$av_inf, decreasing = T),]
+  return(c(paste(x), as.character(df[1:2,"municipio"]),
+           as.character(df[(nrow(df)-1):nrow(df),"municipio"])))
+})
+head(brcorona_hi_rates_inf, 3)
+
+brcorona_low_rates_inf <- lapply(states, FUN=function(x){
+  df <- brazilcorona_hl_rates[brazilcorona_hl_rates$estado == x,]
+  df <- df[order(df$av_inf),]
+  return(c(paste(x), as.character(df[1:2,"municipio"]),
+           as.character(df[(nrow(df)):nrow(df),"municipio"])))
+})
+head(brcorona_low_rates_inf, 3)
+```
+As we can see, in "brcorona_hi_rates_inf", there are the highest infection rates due to COVID-19, while, in "brcorona_low_rates_inf", there are the lowest.
+
+Thirdly, I am creating a new data set with the infection and mortality rates by municipality:
+```{r}
+brazilcorona_rates_municipality <- brazilcorona_municipality %>%
+  mutate(av_inf = (casosAcumulado/populacaoTCU2019)*100000,
+         av_dth = (obitosAcumulado/populacaoTCU2019)*100000) %>%
+  group_by(municipio) %>%
+  summarize(rate_inf = mean(av_inf, na.rm = T),
+            rate_dth = mean(av_dth, na.rm = T))
+head(brazilcorona_rates_municipality)
+```
+
+# Question 5
+
+##### In the data set `brmayors.csv`, there are the party, gender, and schooling of the Brazilian mayors elected in 2016. I downloaded this data set from the `CEPESP Data` repository (http://cepespdata.io/). Explore the variables making tables and/or barplots. Provide a brief interpretation of the results.
+Loading the data set from GitHub:
+```{r}
+prefeitos <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/brmayors.csv", header = T, fileEncoding = "UTF-8")
+head(prefeitos)
+```
+I will do the following code to comprehend the proportion of female mayors in Brazil:
+```{r}
+prefeitas <- ggplot(prefeitos, aes(DESCRICAO_SEXO)) + 
+  geom_bar() + theme_gray()
+prefeitas
+```
+There is a discrepancy between the quantity of male and female mayors.
+
+Now,  I will do the following to comprehend the proportion of education degrees:
+```{r}
+instrucao <- ggplot(prefeitos, aes(DESCRICAO_GRAU_INSTRUCAO))+ 
+  geom_bar() + coord_flip() + theme_gray()
+instrucao
+```
+As we can see, there are many more politicians with a college degree and a minority that can only read and write.
+
+Now, I would like to see the proportions of parties in the data set. Then, I will do the following:
+```{r}
+siglas <- ggplot(prefeitos, aes(SIGLA_PARTIDO))+ 
+  geom_bar() + coord_flip() + theme_gray()
+siglas
+```
+As we can see, the PMDB is the largest political party of the data set, while the PSOL is one of the smallest.
+
+# Question 6
+
+##### Merge this data set with the mortality and infections rates data set created in the previous question. Put a `head` of the new data set.  
+I have realized that the municipality code is a constant variable in brazilcorona.csv and brmayors.csv files. So, I am going to add the infection and death rates in the former data set and rename the variable in one of them to join the data using the 'full_joint' command. These are the codes:
+```{r}
+brazil_joint <- brazilcorona_municipality %>%
+  mutate(av_inf = (casosAcumulado/populacaoTCU2019)*100000,
+         av_dth = (obitosAcumulado/populacaoTCU2019)*100000)
+
+prefeitos_joint <- rename(prefeitos, codmun = COD_MUN_IBGE)
+
+pref_corona <- full_join(brazil_joint, prefeitos_joint)
+head(pref_corona)
+```
+
+# Question 7
+
+##### Some experts showed that places ruled by women have lower mortality rates than areas ruled by men. Test this hypothesis using regression analysis. Provide a brief interpretation of your results.
+To test whether places ruled by women have lower mortality rates than areas ruled by men, I am going to calculate the correlation as following:
+```{r}
+pref_corona$FEMININO = as.numeric(pref_corona$DESCRICAO_SEXO == 'FEMININO')
+lm(av_dth~FEMININO, data = pref_corona)
+```
+As we can see, there is a week negative correlation (about -0.34) between the average mortality rate and female administration. It means that a female administration makes the probability to die due to COVID drop from 3.3663 to 3.0247 per 100000 people.
+
+Despite being a week correlation, these ones are significant to review our public policies and the way our electoral system has been running.
+
+# Question 8
+
+##### Note that most municipalities have no cases of the disease. What happens if you put zero in the places that had no cases, and run the regression in *question 6*? Provide a brief interpretation of your results.
+I assume that you are talking about question 7 because there is no regression in question 6. So, rearranging [NA with zeroes](https://stackoverflow.com/questions/8161836/how-do-i-replace-na-values-with-zeros-in-an-r-dataframe):
+```{r}
+pref_corona8 <- pref_corona %>% 
+  mutate_all(~replace(., is.na(.), 0)) 
+
+pref_corona8$FEMININO = as.numeric(pref_corona8$DESCRICAO_SEXO == 'FEMININO')
+lm(av_dth~FEMININO, data = pref_corona8)
+```
+As we can see, there is a weaker negative correlation (about -0.2) between the average mortality rate and female administration. This means that a female administration decreases the probability of death due to COVID from 1.92188 to 1.7176 per 100,000 people. This shows that we need to improve the accuracy of our analysis on a data set.
+
+# Question 9
+
+##### Create a variable that codes the ideological positions, based on the politician's parties. Use the three-way category: `left`, `center`, and `right`. Justify your choices. Provide a table with the frequency by each category. Run a regression for the new variable, to investigate whether ideological position influences the COVID casualties and infections. Provide a brief interpretation.
+First and foremost, I would like to say I am not a believer in party ideologies. I imagine that exist different ideological positions within the same party. For instance, Aloizio Mercadante's Partido dos Trabalhadores (PT) is the same as Jaques Wagner's. Taking another example, Geraldo Alckmin, João Doria, Aécio Neves, Fernando Henrique Cardoso, José Serra are all in the same party (PSDB) and I am not sure if they all have the same ideology, if any at all. 
+
+Another point is this one: there are 31 parties in the 'brmayors.csv' file and I do not believe that there are such many ideologies. Thus, it is really hard to use the three-way category.
+
+Moreover, to do this exercise, I will divide the parties using a table from [BBC](https://www.bbc.com/portuguese/brasil-41058120). I have chosen the defined "statist and progressive" parties to be "Left". Also, I have chosen the defined "liberal and conservative" to be "Right". Consequently, I have chosen the defined "statist and conservative" and "liberal and progressive" parties to be "Center".
+
+To create a variable that codes the ideological positions, based on the politician's parties, I need the following function:
+```{r}
+ideo_position <- function(x) {
+  ptralha <- c("PCdoB", "PROS", "PSB", "PSOL", "PT", "REDE")
+  coxinha <- c("DEM", "PHS", "PMDB", "PP", "PR", "PRB", "PRP", "PSC", "PSD", "PSDB", "PSL", "PTB", "SD")
+  return(ifelse(x %in% ptralha, "Left", ifelse(x %in% coxinha, "Right", "Center")))
+}
+pref_corona_ideo <- mutate(pref_corona,
+                           ideo = ideo_position(pref_corona$SIGLA_PARTIDO))
+#The new variable is 'ideo'
+```
+Now, I will do the table:
+```{r}
+prop.table(table(pref_corona_ideo$ideo))
+```
+Hence, there are more right-oriented parties in my data set.
+
+Now, I will do the regressions as following:
+```{r}
+lm(av_dth~ideo, data = pref_corona_ideo)
+```
+There is a moderate positive correlation (about 0.47) between the left-oriented parties and the average mortality rate. This means that a left-oriented administration decreases the probability of death due to COVID from 3.1847 to 3.6608 per 100,000 people.
+```{r}
+lm(av_inf~ideo, data = pref_corona_ideo)
+```
+There is a negative correlation between the right-oriented party and the average rate of infection. This means that a right-oriented administration reduces the likelihood of becoming infected with COVID from 72,744 to 62,863 per 100,000 people.
+
+# Question 10
+
+##### Using `ifelse` creates a variable `collegedegree`, which is `Yes` when the mayor has a college degree, and `No` otherwise. Run a regression for the new variable, to investigate whether education influences the COVID casualties and infections. Provide a brief interpretation.
+I am creating a variable 'collegedegree' using 'ifelse':
+```{r}
+college <- function(x) {
+  college = c("SUPERIOR COMPLETO")
+  return(ifelse(x %in% college, 'Yes', 'No'))
+}
+pref_corona_ideo_college <- mutate(pref_corona_ideo,
+                                   collegedegree = college(pref_corona_ideo$DESCRICAO_GRAU_INSTRUCAO))
+```
+Now, these are the regressions:
+```{r}
+pref_corona_ideo_college$Yes = as.numeric(pref_corona_ideo_college$collegedegree == 'Yes')
+
+lm(av_dth~Yes, data = pref_corona_ideo_college)
+lm(av_inf~Yes, data = pref_corona_ideo_college)
+```
+As we can see, there is a negative correlation between college degree and rates of infection and mortality. This means that a college degree reduces the likelihood of dying from COVID from 3,627 to 3,123 and the likelihood of being infected from 69,962 to 61.54 per 100,000 people.

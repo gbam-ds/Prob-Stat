@@ -1,0 +1,353 @@
+---
+title: "Homework 5 -- Intro to Probability and Statistics"
+author: "Gustavo Baroni"
+output: pdf_document
+---
+
+# Instructions:
+
+**Due:** 05/14 at 11:59PM.
+
+**What am I expecting?** An R Markdown with the answers.
+
+**Have fun!**
+
+# Voting in the UN General Assembly
+
+##### Like legislators in the Congress, the member states of the United Nations (UN) are politically divided on many issues such as trade, nuclear disarmament, and human rights. During the Cold War, countries in the UN General Assembly tended to split into two factions: one led by the capitalist United States and the other by the communist Soviet Union. In this exercise, we will analyze how states' ideological positions, as captured by their votes on UN resolutions, have changed since the fall of communism.
+
+##### The table below presents the names and descriptions of the variables in the data set contained in the CSV file `unvoting.csv`.
+
+-------------------- ----------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `CountryName`        Name of the country
+ 
+ `CountryAbb`         Abbreviated name of the country
+ 
+ `idealpoint`         Its estimated ideal point
+ 
+ `Year`               Year for which the ideal point is estimated
+                      
+ `PctAgreeUS`         Proportion of votes that match with votes 
+                      cast by the United States on the same issue
+
+ `PctAgreeRUSSIA`     Proportion of votes that match with votes 
+                      cast by Russia/the Soviet Union on the same
+                      issue
+ -------------------------------------------------------------------------------
+Installing the data from [GitHub] (https://github.com/umbertomig/intro-prob-stat-FGV/blob/master/datasets/unvoting.csv):
+```{r}
+library(tidyverse)
+unvote <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/unvoting.csv", header = TRUE)
+head(unvote)
+```
+
+##### In the analysis that follows, we measure state preferences in two ways. First, we can use the proportion of votes by each country that coincide with votes on the same issue cast by the two major Cold War powers: the United States and the Soviet Union. For example, if a country voted for 10 resolutions in 1992, and if its vote matched the United States's vote on exactly 6 of these resolutions, the variable `PctAgreeUS` in 1992 would equal 60 for this country. Second, we can also measure state preferences in terms of numerical ideal points as explained in class. These ideal points capture what international relations scholars have called countries' liberalism on issues such as political freedom, democratization, and financial liberalization. The two measures are highly correlated, with larger (more liberal) ideal points corresponding to a higher proportion of votes that agree with the United States.
+
+# Question 1
+
+##### We begin by examining how the distribution of state ideal points has changed since the end of communism. Plot the distribution of ideal points separately for 1980 and 2000—about 10 years before and 10 years after the fall of the Berlin Wall, respectively. Add the median to each plot as a vertical line. How do the two distributions differ? Pay attention to the degree of polarization and give a brief substantive interpretation of the results. Use the `quantile()` function to quantify the patterns you identified.
+
+Selecting the years:
+```{r}
+dist.ip.1980 <- subset(unvote, Year == 1980)
+dist.ip.2000 <- subset(unvote, Year == 2000)
+```
+
+Ploting:
+```{r}
+a <- ggplot(data = dist.ip.1980)+
+        geom_density(aes(x = idealpoint), fill = "yellow")+
+        xlab("Ideal Point")+
+        ylab("Density")+
+        ggtitle("Distribution of ideal points", subtitle = "1980")+
+        geom_vline(aes(xintercept = median(idealpoint)), linetype = "longdash", color = "blue")
+
+b <- ggplot(data = dist.ip.2000)+
+        geom_density(aes(x = idealpoint), fill = "yellow")+
+        xlab("Ideal Point")+
+        ylab("Density")+
+        ggtitle("Distribution of ideal points", subtitle = "2000")+
+        geom_vline(aes(xintercept = median(idealpoint)), linetype = "longdash", color = "blue")
+
+a
+b
+```
+
+The quantiles:
+```{r}
+quantile(dist.ip.1980$idealpoint)
+quantile(dist.ip.2000$idealpoint)
+```
+
+The graphics and the quantiles results tend to confirm that, before the end of Cold War (1980), the distribution of ideal points was more polarized than after (2000). In 1980, the huge majority of the ideal points was in the fifth quartile of the data and, twenty years later, the degree of polarization dropped.
+
+# Question 2
+
+##### Next, examine how the number of countries voting with the United States has changed over time. Plot the average percentage agreement with the United States across all countries over time. Also, add the average percentage agreement with Russia as another line for comparison. Using the `tapply()` function may help with this analysis. Does the United States appear to be getting more or less isolated over time, as compared to Russia? Identify some countries that are consistently pro-US. What are the most pro-Russian countries? Give a brief substantive interpretation of the results.
+
+There is an answer for that in [StackOverflow] (https://stackoverflow.com/questions/61775291/how-to-do-a-plot-in-r-with-two-lines). My adapted code is the following:
+```{r}
+unvote %>% 
+  group_by(Year) %>% 
+  summarise(Average_US = mean(PctAgreeUS), Average_RUS = mean(PctAgreeRUSSIA)) %>%
+  na.omit() %>%
+  pivot_longer(cols = c(Average_US, Average_RUS)) %>%
+  ggplot(aes(x = Year, y = value, colour = name)) + 
+  geom_line()
+```
+
+The number of countries voting with the United States has decreased over time as we can see in the blue line in the graphic above. Hence, the United States appear to be getting more isolated over time, as compared to Russia.
+
+# Question 3
+
+##### One problem with using the proportion of votes that agree with the United States or Russia as a measure of state preferences is that the ideological positions, and consequently the voting patterns, of the two countries might themselves have changed over time. This makes it difficult to know which countries’ ideological positions have changed. Investigate this issue by plotting the evolution of the two countries' ideal points over time. Add the yearly median ideal point of all countries. How might the results of this analysis modify (or not) your interpretation of the previous analysis?
+
+Selecting USA and Russia from the dataset:
+```{r}
+USA.ip <- subset(unvote, CountryName == "United States of America")
+USSR.ip <- subset(unvote, CountryName == "Russia")
+```
+
+To add the median ideal point of all countries, I need to do the following:
+```{r}
+all.ip <- unvote %>%
+       group_by(Year) %>% 
+       summarise(median = median(idealpoint, na.rm = T))
+```
+
+Ploting:
+```{r}
+ggplot(NULL, aes(Year, idealpoint)) +
+        geom_line(data = USA.ip, color = "blue") +
+        geom_line(data = USSR.ip, color = "red") + 
+        geom_line(aes(x = all.ip$Year, y = all.ip$median))+
+        ggtitle("Ideal points of the bipolar world") +
+        labs(y = "Ideal Point", x = "Year", color = "legend") + 
+        scale_color_manual(values = colors)
+```
+
+As we can see in the graphic above, after the 1980's the ideological position of USSR have changed - the ideal points have increased. So, it means that, despite the former result, the USA appear to be getting less isolated over time, as compared to Russia.
+
+# Question 4
+
+##### Let’s examine how countries that were formerly part of the Soviet Union differ in terms of their ideology and UN voting compared to countries that were not part of the Soviet Union. The former Soviet Union countries are Estonia, Latvia, Lithuania, Belarus, Moldova, Ukraine, Armenia, Azerbaijan, Georgia, Kazakhstan, Kyrgyzstan, Tajikistan, Turkmenistan, Uzbekistan, and Russia. The `%in%` operator, which is used as `x %in% y`, may be useful. This operator returns a logical vector whose elements are `TRUE` if the corresponding element of vector x is equal to a value contained in vector y and otherwise `FALSE`. Focus on the most recently available UN data from 2012 and plot each post-Soviet Union state’s ideal point against the proportion of its votes that agree with the United States. Compare the post-Soviet Union states, within the same plot, against the other countries. Briefly comment on what you observe.
+
+Selecting 2012 from the data set:
+```{r}
+unvote2012 <- subset(unvote, Year == "2012")
+worldvote2012 <- subset(unvote, Year == "2012")
+```
+
+Creating a vector for the countries that were formerly part of the Soviet Union:
+```{r}
+exSU <- c("Estonia", "Latvia", "Lithuania", "Belarus", "Moldova", "Ukraine", "Armenia", "Azerbaijan", "Georgia", "Kazakhstan", "Kyrgyzstan", "Tajikistan", "Turkmenistan", "Uzbekistan", "Russia")
+```
+
+Grouping the ex-Soviet countries:
+```{r}
+exUSSR <- filter(unvote2012, CountryName %in% exSU)
+```
+
+Grouping the remainders:
+```{r}
+wv2012 <- filter(worldvote2012, !(CountryName %in% exSU))
+```
+
+Ploting: 
+```{r}
+ggplot(wv2012, 
+       aes(x = mean(PctAgreeUS), 
+           y = mean(idealpoint), 
+           group = CountryName)) +
+  geom_point(aes(color = "red"), size = 4) +
+  geom_point(data = exUSSR, 
+             aes(x = PctAgreeUS, 
+                 y = idealpoint, 
+                 group = CountryName, 
+                 color = "yellow"), size = 1) +
+   labs(title = 'Ex-Soviet countries and the World')
+```
+
+As we can see, the countries that were formerly part of the Soviet Union were divided by the support to USA.
+
+# Question 5
+
+##### We have just seen that while some post-Soviet countries have retained nonliberal ideologies, other post-Soviet countries were much more liberal in 2012. Let’s examine how the median ideal points of Soviet/post-Soviet countries and all other countries have varied over all the years in the data. Plot these median ideal points by year. Be sure to indicate 1989, the year of the fall of the Berlin Wall, on the graph. Briefly comment on what you observe.
+
+Selecting the data that I will need:
+```{r}
+exUSSR <- c("Estonia", "Latvia", "Lithuania", "Belarus", "Moldova", "Ukraine", "Armenia","Azerbaijan", "Georgia", "Kazakhstan", "Kyrgyzstan", "Tajikistan", "Turkmenistan", "Uzbekistan", "Russia")
+unvoting <- mutate(unvote, SU = ifelse(CountryName %in% exUSSR, "USSR", "Ex-USSR"))
+```
+
+Plotting:
+```{r}
+t <- aggregate(idealpoint~Year+SU, FUN = median, data = unvoting)
+ggplot(t) +
+  geom_line(aes(x = Year, y = idealpoint, col=SU)) +
+  scale_color_discrete(name="Legend") +
+  labs(title = "Ideal points over the years") +
+  geom_vline(xintercept = 1989, linetype = "longdash")
+```
+
+With the fall of Soviet Union, the communist regime became more liberal than the post-Soviet countries.
+
+# Question 6
+
+##### Following the end of communism, countries that were formerly part of the Soviet Union have become much more ideologically diverse. Is this also true of the world as a whole? In other words, do countries still divide into two ideological factions? Let’s assess this question by applying the k-means clustering algorithm to ideal points and the proportion of votes agreeing with the United States. Initiate the algorithm with just two centroids and visualize the results separately for 1989 and 2012. Briefly comment on the results.
+
+I have searched [how to use k-means] (https://uc-r.github.io/kmeans_clustering)and the application for this exercise is the following:
+```{r}
+uv1989 <- subset(unvote, Year == 1989)
+kca <- kmeans(uv1989[, c("idealpoint", "PctAgreeUS")], centers = 2)
+uv1989$cluster <- kca$cluster
+centroids <- data.frame(kca$centers)
+```
+
+Plotting 1989:
+```{r}
+ggplot(data = uv1989, aes(x = idealpoint, y = PctAgreeUS)) +
+  geom_point(aes(col = as.factor(cluster))) +
+  labs(title = "Ideal Points in 1989") +
+  geom_point(data = centroids, color = "purple", size = 5, pch = "X")
+```
+Plotting 2012:
+```{r}
+uv2012 <- subset(unvote, Year == 2012)
+kca2 <- kmeans(uv2012[, c("idealpoint", "PctAgreeUS")], centers = 2)
+uv2012$cluster <- kca2$cluster
+centroids2 <- data.frame(kca2$centers)
+
+ggplot(data = uv2012, aes(x = idealpoint, y = PctAgreeUS)) +
+  geom_point(aes(col = as.factor(cluster))) +
+  labs(title = "Ideal Points in 2012") +
+  geom_point(data = centroids, color = "purple", size = 5, pch = "X")
+```
+
+Analyzing both graphics above, I could conclude that the agreement to USA's votes has increased proportinately.
+
+# Success of Leader Assassination as a Natural Experiment
+
+##### One longstanding debate in the study of international relations concerns the question of whether individual political leaders can make a difference. Some emphasize that leaders with different ideologies and personalities can significantly affect the course of a nation. Others argue that political leaders are severely constrained by historical and institutional forces. Did individuals like Hitler, Mao, Roosevelt, and Churchill make a big difference? The difficulty of empirically testing these arguments stems from the fact that the change of leadership is not random and there are many confounding factors to be adjusted for. In this exercise, we consider a natural experiment in which the success or failure of assassination attempts is assumed to be essentially random. Each observation of the CSV data set `leaders.csv` contains information about an assassination attempt. The table below presents the names and descriptions of variables in this leader assassination data set.
+
+Installing the data set from GitHub:
+```{r}
+leaders <- read.csv("https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/leaders.csv")
+```
+
+##### The polity variable represents the so-called polity score from the Polity Project. The Polity Project systematically documents and quantifies the regime types of all countries in the world from 1800. The polity score is a 21-point scale ranging from -10 (hereditary monarchy) to 10 (consolidated democracy). The result variable is a 10-category factor variable describing the result of each assassination attempt.
+
+-------------------- ----------------------------------------------------------
+ Name                 Description
+ -------------------- ----------------------------------------------------------
+ `country`            Country
+                      
+ `year`               Year
+                      
+ `leadername`         Name of the leader who was targeted
+                      
+ `age`                Age of the targeted leader
+                      
+ `politybefore`       Average polity score of the country during the 
+                      three-year period prior to the attempt
+                      
+ `polityafter`        Average polity score of the country during the 
+                      three-year period after the attempt
+                      
+ `civilwarbefore`     1 if the country was in civil war during the
+                      three-year period prior to the attempt, 0
+                      otherwise
+                      
+ `civilwarafter`      1 if the country was in civil war during the
+                      three-year period after the attempt, 0 
+                      otherwise
+                      
+ `interwarbefore`     1 if the country was in international war during
+                      the three-year period prior to the attempt, 0
+                      otherwise
+                      
+ `interwarafter`      1 if the country was in international war during 
+                      the three-year period after the attempt, 0
+                      otherwise
+                      
+ `result`             Result of the assassination attempt
+ -------------------------------------------------------------------------------
+
+# Question 7
+
+##### How many assassination attempts are recorded in the data? How many countries experience at least one leader assassination attempt? (The `unique()` function, which returns a set of unique values from the input vector, may be useful here.) What is the average number of such attempts (per year) among these countries?
+
+There are 250 assassination attempts recorded in the data. It is possible to confirm that using dim():
+```{r}
+dim(leaders)
+```
+
+88 countries have experienced at least one leader assassination attempt.It is possible to confirm that using unique():
+```{r}
+unique(leaders$country, incomparables = F)
+```
+
+# Question 8
+
+##### Create a new binary variable named `success` that is equal to 1 if a leader dies from the attack and 0 if the leader survives. Store this new variable as part of the original data frame. What is the overall success rate of leader assassination? Does the result speak to the validity of the assumption that the success of assassination attempts is randomly determined?
+
+Creating a new binary variable:
+```{r}
+leaders$success <- as.numeric(leaders$result == "dies within a day after the attack"|leaders$result == "dies between a day and a week"|leaders$result == "dies between a week and a month"|leaders$result == "dies, timing unknown")
+mean(leaders$success)
+```
+
+The overall success rate of leader assassination is about 22%. However, the result does not speak to the validity of the assumption that the success of assassination attempts is randomly determined.
+
+# Question 9
+
+##### Investigate whether the average polity score over three years prior to an assassination attempt differs on average between successful and failed attempts. Also, examine whether there is any difference in the age of targeted leaders between successful and failed attempts. Briefly interpret the results in light of the validity of the aforementioned assumption.
+
+Selecting the data that I will need:
+```{r}
+leaderav <- select(leaders, politybefore, success)
+```
+
+Creating success and fail variables for the new data:
+```{r}
+leader.success <- filter(leaderav, success == "1")
+leaders.fail <- filter(leaderav, success == "0")
+```
+
+Discoverying the mean:
+```{r}
+mean(table(leader.success$politybefore))
+mean(table(leaders.fail$politybefore))
+```
+
+As we can see, the average polity score over three years prior to an assassination attempt differs on average between successful and failed attempts. So, an assassination attemptit is more likely to fail.
+
+Now, to know whether there is any difference in the age of targeted leaders between successful and failed attempts, the recycling code is the following:
+```{r}
+leaderag <- select(leaders, age, success)
+l.age.success <- filter(leaderag, success == "1")
+l.age.fail <- filter(leaderag, success == "0")
+mean(table(l.age.success$age))
+mean(table(l.age.fail$age))
+```
+
+As we can conclude, examining the correlation between age and the successful of an assassination attempt, it is more likely to failed.
+
+# Question 10
+
+##### Repeat the same analysis as in the previous question, but this time using the country’s experience of civil and international war. Create a new binary variable in the data frame called `warbefore`. Code the variable such that it is equal to 1 if a country is in either civil or international war during the three years prior to an assassination attempt. Provide a brief interpretation of the result.
+
+Recycling the code:
+```{r}
+leaders$warbefore <- as.numeric(leaders$interwarbefore == "1"|leaders$civilwarbefore == "1")
+a.a.success <- select(leaders, success, warbefore)
+a.a.success <- filter(a.a.success, success == 1)
+a.a.fail <- select(leaders, success, warbefore)
+a.a.fail <- filter(a.a.fail, success == 0)
+mean(a.a.success$warbefore)
+mean(a.a.fail$warbefore)
+```
+
+So, an assassination attempt is more likely to fail in a country that faced a war. 
