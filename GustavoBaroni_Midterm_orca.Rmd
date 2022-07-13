@@ -1,0 +1,540 @@
+---
+title: "Midterm -- Stats for IR"
+author: "Gustavo Baroni"
+date: "Due 4/23/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+always_allow_html: yes
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+```
+
+## **Instructions:**
+
+1. This is a 10-days take-home exam.
+2. This is an individual exam. You should not collaborate.
+3. I will hold office hours Thursday, during class time.
+4. In the office hours, you may not ask questions specifically about the midterm. Please rephrase the issues in terms of similar problems.
+5. If it does not knit, the grade is **zero**.
+6. Good luck!
+
+## Question 1
+
+##### Thomas Fujiwara wrote the [following tweet](https://twitter.com/thomasfujiwara/status/1249817958874001412?s=20) to analyze the COVID-19 evolution. You should replicate the same graph, not for the Brazilian States, but countries. After this, you should tell us about the COVID-19 trends in the world. In which countries the COVID is going down? In which countries the COVID is going up? Do two separate analysis for the:
+##### 1. Evolution of infections
+##### 2. Evolution of casualties
+
+  In order to replicate the same graph, I am going to install the coronavirus package from [Git Hub] (https://github.com/RamiKrispin/coronavirus) to update the graph automatically.
+```{r}
+download.file("https://github.com/RamiKrispin/coronavirus/raw/master/data/coronavirus.rda", "cv")
+load("cv")
+```
+
+  I do not have such knowledge to make a graphic about the COVID-19 evolution yet. However, I can learn how to do it. I [have found a website] (https://ramikrispin.github.io/coronavirus_dashboard/) with some codes about the coronavirus data. I pretend to explain that codes in order to respond to the questions.
+
+  First, it is necessary make a background with some codes that is going to be used. The colors for the graphics are the following:
+```{r}
+confirmed_color <- "purple"
+active_color <- "#1f77b4"
+recovered_color <- "forestgreen"
+death_color <- "red"
+```
+
+  Then, I will select and change codes to facilitate the construction and visualization of the graphics:
+```{r}
+df <- coronavirus %>%
+  dplyr::group_by(Country.Region, type) %>%
+  dplyr::summarise(total = sum(cases)) %>%
+  #pivot_wider() was not working, so I adapted thew original code using spread() 
+  tidyr::spread(type, total) %>%
+  dplyr::mutate(unrecovered = confirmed - ifelse(is.na(recovered), 0, recovered) - ifelse(is.na(death), 0, death)) %>%
+  dplyr::arrange(-confirmed) %>%
+  dplyr::ungroup() %>%
+  #changing the name of the countries
+  dplyr::mutate(country = dplyr::if_else(Country.Region == "United Arab Emirates", "UAE", Country.Region)) %>%
+  dplyr::mutate(country = dplyr::if_else(country == "Mainland China", "China", country)) %>%
+  dplyr::mutate(country = dplyr::if_else(country == "North Macedonia", "N.Macedonia", country)) %>%
+  dplyr::mutate(country = trimws(country)) %>%
+  dplyr::mutate(country = factor(country, levels = country))
+
+df_daily <- coronavirus %>% 
+  dplyr::group_by(date, type) %>%
+  dplyr::summarise(total = sum(cases, na.rm = TRUE)) %>%
+  tidyr::spread(type,total) %>%
+  dplyr::arrange(date) %>%
+  dplyr::ungroup() %>%
+  #defining "active"
+  dplyr::mutate(active =  confirmed - death - recovered) %>%
+  dplyr::mutate(confirmed_cum = cumsum(confirmed),
+                death_cum = cumsum(death),
+                recovered_cum = cumsum(recovered),
+                active_cum = cumsum(active))
+df1 <- coronavirus %>% dplyr::filter(date == max(date))
+```
+
+  Now, I will define some dataframes by country:
+```{r}
+#China
+df_china <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "China") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(china = cumsum(cases)) %>%
+  dplyr::filter(china > 100)  %>%
+  dplyr::select(-cases, -date)
+df_china$index <- 1:nrow(df_china)
+
+#United Kingdom
+df_uk <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "United Kingdom") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(uk = cumsum(cases)) %>%
+  dplyr::filter(uk > 100)  %>%
+  dplyr::select(-cases, -date)
+df_uk$index <- 1:nrow(df_uk)
+
+#France
+df_fr <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "France") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(france = cumsum(cases)) %>%
+  dplyr::filter(france > 100)  %>%
+  dplyr::select(-cases, -date)
+df_fr$index <- 1:nrow(df_fr)
+
+#United States
+df_us <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "US") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(us = cumsum(cases)) %>%
+  dplyr::filter(us > 100)  %>%
+  dplyr::select(-cases, -date)
+df_us$index <- 1:nrow(df_us)
+
+#Iran
+df_iran <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "Iran") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(iran = cumsum(cases)) %>%
+  dplyr::filter(iran > 100)  %>%
+  dplyr::select(-cases, -date)
+df_iran$index <- 1:nrow(df_iran)
+
+#South Korea
+df_sk <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "Korea, South") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(sk = cumsum(cases)) %>%
+  dplyr::filter(sk > 100)  %>%
+  dplyr::select(-cases, -date)
+df_sk$index <- 1:nrow(df_sk)
+
+#Spain
+df_spain <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "Spain") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(spain = cumsum(cases)) %>%
+  dplyr::filter(spain > 100)  %>%
+  dplyr::select(-cases, -date)
+df_spain$index <- 1:nrow(df_spain)
+
+#There was not a code for Brazil, so I created it:
+#Brazil
+df_brazil <- coronavirus %>% 
+  dplyr::filter(type == "confirmed", Country.Region == "Brazil") %>%
+  dplyr::group_by(date) %>%
+  dplyr::summarise(cases = sum(cases)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(date) %>%
+  dplyr::mutate(brazil = cumsum(cases)) %>%
+  dplyr::filter(brazil > 100)  %>%
+  dplyr::select(-cases, -date)
+df_brazil$index <- 1:nrow(df_brazil)
+
+df_trajectory <- df_china %>% 
+  dplyr::left_join(df_iran, by = "index") %>%
+  dplyr::left_join(df_sk, by = "index") %>%
+  dplyr::left_join(df_us, by = "index") %>%
+  dplyr::left_join(df_fr, by = "index") %>%
+  dplyr::left_join(df_uk, by = "index") %>%
+  dplyr::left_join(df_spain, by = "index") %>% #I have also included df_brazil in this step
+  dplyr::left_join(df_brazil, by = "index")
+```
+
+
+  I [asked on StackOverflow] (https://stackoverflow.com/questions/61394573/wich-function-could-substitute-the-plotly-one?noredirect=1#comment108613032_61394573) regarding how to generate pdf files of my graphs made with plotly. With the answer, I understood that I needed a plotly function: orca. Then, I needed to know how to install and how to use orca. I searched on Youtube and found a [very good explanation in Portuguese] (https://www.youtube.com/watch?v=8aRzh1QdXus). This was unusual because this video in Portuguese was more didactic than many others in English, which usually does not happen.
+
+  This code provides the most updated distribution by type, so it possible to see the infections and deaths cases around the world:
+```{r}
+p <- plotly::plot_ly(data = df, 
+                x = ~ country, 
+                y = ~ unrecovered, 
+                # text =  ~ confirmed, 
+                # textposition = 'auto',
+                type = "bar", 
+                name = "Active",
+                marker = list(color = active_color)) %>%
+  plotly::add_trace(y = ~ recovered, 
+                    # text =  ~ recovered, 
+                    # textposition = 'auto',
+                    name = "Recovered",
+                    marker = list(color = recovered_color)) %>%
+  plotly::add_trace(y = ~ death, 
+                    # text =  ~ death, 
+                    # textposition = 'auto',
+                    name = "Death",
+                    marker = list(color = death_color)) %>%
+  plotly::layout(title = "Distribution by type",
+                 barmode = 'stack',
+                 yaxis = list(title = "Total Cases (log scaled)",
+                              type = "log"),
+                 xaxis = list(title = paste("Last update:", format(max(coronavirus::coronavirus$date), '%d %B'), sep = " ")),
+                 hovermode = "compare",
+                 annotations = list(
+                   text = paste("Last update:", format(max(coronavirus::coronavirus$date), '%d %B'), sep = " "),
+                   xref = "paper",
+                   yref = "paper",
+                   showarrow = FALSE,
+                  x = 0.95,
+                  y = 1
+                 ),
+                 margin =  list(
+                   # l = 60,
+                   # r = 40,
+                   b = 10,
+                   t = 10,
+                   pad = 2))
+
+orca(p, file = "distribution.pdf")
+```
+
+  It is easier to see the graphic with less information. This code is a top 30  of the former one:
+```{r}
+p1 <- plotly::plot_ly(data = df[1:30,], 
+                x = ~ country, 
+                y = ~ unrecovered, 
+                # text =  ~ confirmed, 
+                # textposition = 'auto',
+                type = "bar", 
+                name = "Active",
+                marker = list(color = active_color)) %>%
+  plotly::add_trace(y = ~ recovered, 
+                    # text =  ~ recovered, 
+                    # textposition = 'auto',
+                    name = "Recovered",
+                    marker = list(color = recovered_color)) %>%
+  plotly::add_trace(y = ~ death, 
+                    # text =  ~ death, 
+                    # textposition = 'auto',
+                    name = "Death",
+                    marker = list(color = death_color)) %>%
+  plotly::layout(title = "Distribution by type",
+                 barmode = 'stack',
+                 yaxis = list(title = "Total Cases (log scaled)",
+                              type = "log"),
+                 xaxis = list(title = paste("Last update:", format(max(coronavirus::coronavirus$date), '%d %B'), sep = " ")),
+                 hovermode = "compare",
+                 annotations = list(
+                   text = paste("Last update:", format(max(coronavirus::coronavirus$date), '%d %B'), sep = " "),
+                   xref = "paper",
+                   yref = "paper",
+                   showarrow = FALSE,
+                  x = 0.95,
+                  y = 1
+                 ),
+                 margin =  list(
+                   # l = 60,
+                   # r = 40,
+                   b = 10,
+                   t = 10,
+                   pad = 2))
+
+orca(p1, "top30distribution.pdf")
+```
+
+  This one provides the daily cumulative cases by type, so it is possible to see the evolution of infections and casualties around the world:
+```{r}
+p2 <- plotly::plot_ly(data = df_daily,
+                x = ~ date,
+                y = ~ active_cum, 
+                name = 'Active', 
+                fillcolor = active_color,
+                type = 'scatter',
+                mode = 'none', 
+                stackgroup = 'one') %>%
+  plotly::add_trace(y = ~ recovered_cum,
+                    name = "Recovered",
+                    fillcolor = recovered_color) %>%
+  plotly::add_trace(y = ~ death_cum,
+                    name = "Death",
+                    fillcolor = death_color) %>%
+  plotly::layout(title = "Daily cumulative cases by type",
+                 yaxis = list(title = "Cumulative Number of Cases"),
+                 xaxis = list(title = "Date"),
+                 legend = list(x = 0.1, y = 0.9),
+                 hovermode = "compare")
+
+orca(p2, "daily.pdf")
+```
+
+  Here is the trends:
+```{r}
+p3 <- plotly::plot_ly(data = df_trajectory) %>%
+  plotly::add_lines(x = ~ index,
+                    y = ~ china,
+                    name = "China",  line = list(width = 2)) %>%
+  plotly::add_lines(x = ~ index,
+                    y = ~ brazil,
+                    line = list(color = "red", width = 2),
+                    name = "Brazil") %>%
+  plotly::add_lines(x = ~ index,
+                    y = ~ us,
+                    name = "United States",  line = list(width = 2)) %>%
+    plotly::add_lines(x = ~ index,
+                    y = ~ uk,
+                    name = "United Kingdom",  line = list(width = 2)) %>%
+      plotly::add_lines(x = ~ index,
+                    y = ~ france,
+                    name = "France",  line = list(width = 2)) %>%
+  plotly::add_lines(x = ~ index,
+                    y = ~ iran,
+                    name = "Iran",  line = list(color = "orange", width = 2)) %>%
+  plotly::add_lines(x = ~ index,
+                    y = ~ sk,
+                    name = "South Korea",  line = list(width = 2)) %>%
+  plotly::add_lines(x = ~ index,
+                    y = ~ spain,
+                    name = "Spain") %>%
+  plotly::layout(yaxis = list(title = "Cumulative Positive Cases",type = "log"),
+                 xaxis = list(title = "Days since the total positive cases surpass 100"),
+                 legend = list(x = 0.7, y = 0.3),
+                 title = "Trends",
+                 hovermode = "compare")
+
+orca(p3, "trends.pdf")
+```
+
+**Hint:** recycle the code you wrote in the last problem set.
+
+## Question 2
+
+##### Let the following vector:
+```{r}
+ages <- rbinom(100, 50, .2)+18
+```
+
+##### Compute:
+
+##### 1. The mean of the vector. 
+
+  The mean of the ages is the following:
+```{r}
+mean(ages)
+```
+
+##### 2. The median of the vector.
+
+  The median of the ages is the following:
+```{r}
+median(ages)
+```
+
+##### 3. The quartiles.
+
+  The quartiles are the following:
+```{r}
+quantile(ages)
+```
+
+##### 4. The 1-percentile and the 99-percentile.
+
+  The 1-percentile and the 99-percentile are the following:
+```{r}
+quantile(ages, probs = c(0.01, 0.99) )
+```
+
+##### 5. Make a histogram.
+
+  A histogram of the ages is the following:
+```{r}
+hist(ages,
+     xlab = "Ages",
+     xlim = c(20, 40),
+     ylim = c(0, 30),
+     col = "grey")
+```
+
+##### 6. Make a box-plot.
+
+  A box-plot of the ages is the following:
+```{r}
+boxplot(ages,
+        main = "Mean of ages in a boxplot",
+        ylab = "Ages",
+        col = "pink",
+        horizontal = FALSE)
+```
+
+## Question 3
+
+##### In the following dataset, we have an experiment where researchers send resumes for jobs, randomizing the names of the applicants. In the US, the names of applicants are correlated with race, and this allows firms to select racially based on the person's names.
+
+##### The paper that this problem came from is the following: Marianne Bertrand and Sendhil Mullainathan (2004) “Are Emily and Greg more employable than Lakisha and Jamal? A field experiment on labor market discrimination.” American Economic Review, vol. 94, no. 4, pp. 991–1013. (https://www.aeaweb.org/articles?id=10.1257/0002828042002561)
+
+##### The dataset is the following:
+```{r}
+resume <- read.csv('https://raw.githubusercontent.com/umbertomig/intro-prob-stat-FGV/master/datasets/resume.csv')
+head(resume)
+```
+
+##### If has the following variables:
+
+* **firstname:** First name in the resume
+* **sex:** Gender of the applicant
+* **race:** Race of the applicant
+* **call:** Whether a callback was made (call=1) or not (call=0)
+
+##### Answer the following questions:
+
+##### 1. What is the overall callback rate?
+
+  The overall callback rate is the following:
+```{r}
+mean(resume$call)*100
+```
+
+##### 2. What is the black callback rate?
+
+  The black callback rate is the following:
+```{r}
+BCB <- filter(resume, race == "black")
+mean(BCB$call)*100
+```
+
+##### 3. What is the white callback rate?
+
+  The white callback rate is the following:
+```{r}
+WCB <- filter(resume, race == "white")
+mean(WCB$call)*100
+```
+
+##### 4. What is the Black-Female callback rate?
+
+  The black-female callback rate is the following:
+```{r}
+BFCB2 <- filter(resume, sex == "female", race == "black")
+mean(BFCB2$call)*100
+```
+
+##### 5. What is the White-Female callback rate?
+
+  The white-female callback rate is the following:
+```{r}
+WFCB2 <- filter(resume, sex == "female", race == "white")
+mean(WFCB2$call)*100
+```
+
+##### 6. What is the callback rate by the first name? Which first name receives the highest and the lowest callback rates?
+
+  The callback rates by the firt name are the following:
+```{r}
+tapply(resume$call, resume$firstname, mean)*100
+```
+
+  Using the [prop.table function] (https://stackoverflow.com/questions/45633699/how-does-the-prop-table-function-work-in-r), I can compare each first name with the whole.  
+
+  Using number 1, I can analyze the proportion of callback rates by comparing the results of those who received them and who did not (comparing by row). The highest callback rates by the first name belong to "Allison" and "Carrie". And, the lowest callback rates belong to "Darnell" and "Rasheed".
+We can confirme these results below:
+```{r}
+prop.table(table(resume$call, resume$firstname), 1)
+```
+
+##### 7. Make a mosaicplot of the callback rate by race.
+
+  I have [searched] (https://www.tutorialgateway.org/mosaic-plot-in-r/) how to make a mosaicplot and this is the result:
+```{r}
+TCBR <- table(resume$call, resume$race)
+mosaicplot(TCBR,
+           main = "Callback Mosaic Plot",
+           sub = "Callback rate by race",
+           xlab = "Call",
+           ylab = "Race",
+           las = 1,
+           dir = c("v", "h"),
+           color = "cyan4",
+           border = "turquoise2")
+```
+
+  We can see in this mosaic a higher callback rate for white people.
+
+##### 8. Make a mosaicplot of the callback rate by gender.
+
+  I have recycled the previous code to do this one:
+```{r}
+TCBG <- table(resume$call, resume$sex)
+mosaicplot(TCBG,
+           main = "Callback Mosaic Plot",
+           sub = "Callback rate by gender",
+           xlab = "Call",
+           ylab = "Gender",
+           color = "springgreen4",
+           border = "turquoise4")
+```
+
+  We can see in this mosaic a higher callback rate for women.
+
+
+## Question 4
+
+##### 1. What is the fundamental problem of the causal inference? Provide an example.
+
+  The fundamental problem of causal inference occurs when it is impossible to have a control group. In other words, in some cases, it is not possible to test the real impact of the cause. 
+
+  To evaluate the consequence of a policy, for instance, you need to analyze two perfectly identical scenarios. In the first scenario, there should be policy implementation and, in a second one, no. Furthermore, both scenarios should be the same in all other situations (such as the economic idea of _ceteris paribus_).
+
+  To do this, it would be necessary to recreate two worlds (as a parallel reality). Hence, since it is impossible to recreate the same scenario and the conditions, the causal inference might not provide a precise answer for every question.
+
+##### 2. One researcher wants to study tax conservatism among the rich. She selects lottery ticket winners to run her study, and she claims that the biggest the ticket the person won, the more the person is against income taxes. Should we believe this study? What are the strengths of this study? What are the weaknesses of this study?
+
+  We should be as skeptical about this study as we should be with others.
+
+  To select lottery ticket winners makes sense to get a rich group, but I am not sure about de diversity of thoughts and the randomization of this group.
+
+  I do not believe that lottery ticket winners would support to give back the money that they have received.
+
+##### 3. Suppose you want to replicate the study in **question 3** in Brazil. What would you do? What are the design choices that you would make? What are the potential problems?
+
+  It is not so common to recognize people's race by their first name in Brazil. Therefore, the study must be adapted to be used here. 
+
+  Being the research question "Do interventions reflect racism?", I suggest analyzing the interview time because a short interview can indicate rejection: the interviewer can speed up the process to avoid too much interaction with a black candidate. 
+
+  Besides, a very long interview could symbolize harassment against the candidate: the interviewer could interrogate a black candidate to find an error and, using this as an excuse, not choose him. 
+
+  My hypothesis would be denied if the results of the survey showed that black candidates with very little or a lot of interview time were the ones who had the best hiring rate.
